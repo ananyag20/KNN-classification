@@ -1,0 +1,83 @@
+# Task 6: K-Nearest Neighbors (KNN) Classification
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+
+# Load dataset
+iris = load_iris()
+X = pd.DataFrame(iris.data, columns=iris.feature_names)
+y = pd.Series(iris.target, name="species")
+
+# Normalize features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+
+# Try different values of K
+accuracies = []
+k_values = range(1, 21)
+
+for k in k_values:
+    knn = KNeighborsClassifier(n_neighbors=k)
+    knn.fit(X_train, y_train)
+    preds = knn.predict(X_test)
+    acc = accuracy_score(y_test, preds)
+    accuracies.append(acc)
+
+# Plotting accuracy vs K
+plt.figure(figsize=(10, 6))
+plt.plot(k_values, accuracies, marker='o')
+plt.title('Accuracy vs K value')
+plt.xlabel('K')
+plt.ylabel('Accuracy')
+plt.grid(True)
+plt.show()
+
+# Final model with best K
+best_k = k_values[accuracies.index(max(accuracies))]
+print(f"Best K: {best_k}")
+
+final_knn = KNeighborsClassifier(n_neighbors=best_k)
+final_knn.fit(X_train, y_train)
+y_pred = final_knn.predict(X_test)
+
+# Evaluation
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
+print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+
+# Optional: Visualizing decision boundaries (2D)
+from matplotlib.colors import ListedColormap
+import numpy as np
+
+X_2d = X_scaled[:, :2]  # take only first 2 features for visualization
+X_train_2d, X_test_2d, y_train_2d, y_test_2d = train_test_split(X_2d, y, test_size=0.2, random_state=42)
+
+clf = KNeighborsClassifier(n_neighbors=best_k)
+clf.fit(X_train_2d, y_train_2d)
+
+x_min, x_max = X_2d[:, 0].min() - 1, X_2d[:, 0].max() + 1
+y_min, y_max = X_2d[:, 1].min() - 1, X_2d[:, 1].max() + 1
+xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.1),
+                     np.arange(y_min, y_max, 0.1))
+
+Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
+Z = Z.reshape(xx.shape)
+
+plt.figure(figsize=(10, 6))
+cmap_light = ListedColormap(['#FFAAAA', '#AAFFAA', '#AAAAFF'])
+cmap_bold = ListedColormap(['#FF0000', '#00FF00', '#0000FF'])
+
+plt.contourf(xx, yy, Z, alpha=0.4, cmap=cmap_light)
+sns.scatterplot(x=X_2d[:, 0], y=X_2d[:, 1], hue=iris.target_names[y], palette=cmap_bold, edgecolor='k')
+plt.title(f"Decision Boundaries (K={best_k}) using first two features")
+plt.xlabel(iris.feature_names[0])
+plt.ylabel(iris.feature_names[1])
+plt.show()
